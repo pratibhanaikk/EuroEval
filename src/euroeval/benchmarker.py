@@ -1,5 +1,3 @@
-"""Class that benchmarks language models."""
-
 import contextlib
 import json
 import logging
@@ -34,10 +32,9 @@ if t.TYPE_CHECKING:
     from .benchmark_modules import BenchmarkModule
     from .data_models import BenchmarkConfig, DatasetConfig, ModelConfig
 
-
 logger = logging.getLogger("euroeval")
 
-
+"""Class that benchmarks language models."""
 class Benchmarker:
     """Benchmarking all the language models.
 
@@ -54,7 +51,6 @@ class Benchmarker:
         benchmark_results:
             The benchmark results.
     """
-
     def __init__(
         self,
         progress_bar: bool = True,
@@ -78,7 +74,6 @@ class Benchmarker:
         num_iterations: int = 10,
         api_base: str | None = None,
         api_version: str | None = None,
-        gpu_memory_utilization: float = 0.9,
         debug: bool = False,
         run_with_cli: bool = False,
         only_allow_safetensors: bool = False,
@@ -146,11 +141,6 @@ class Benchmarker:
                 to a model on an inference API. Defaults to None.
             api_version:
                 The version of the API to use. Defaults to None.
-            gpu_memory_utilization:
-                The GPU memory utilization to use for vLLM. Only relevant if the model
-                is generative. A larger value will result in faster evaluation, but at
-                the risk of running out of GPU memory. Only reduce this if you are
-                running out of GPU memory. Defaults to 0.9.
             debug:
                 Whether to output debug information. Defaults to False.
             run_with_cli:
@@ -167,7 +157,6 @@ class Benchmarker:
         if task is not None and dataset is not None:
             raise ValueError("Only one of `task` and `dataset` can be specified.")
 
-        # Bail early if hf_transfer is enabled but not installed.
         if HF_HUB_ENABLE_HF_TRANSFER and get_package_version("hf_transfer") is None:
             raise ImportError(
                 "Fast download using 'hf_transfer' is enabled "
@@ -198,7 +187,6 @@ class Benchmarker:
             num_iterations=num_iterations,
             api_base=api_base,
             api_version=api_version,
-            gpu_memory_utilization=gpu_memory_utilization,
             debug=debug,
             run_with_cli=run_with_cli,
             only_allow_safetensors=only_allow_safetensors,
@@ -208,7 +196,6 @@ class Benchmarker:
             first_time=True, **self.benchmark_config_default_params.model_dump()
         )
 
-        # Initialise variable storing model lists, so we only have to fetch it once
         self._model_lists: dict[str, list[str]] | None = None
 
         self.results_path = Path.cwd() / "euroeval_benchmark_results.jsonl"
@@ -394,8 +381,6 @@ class Benchmarker:
             model_config: ModelConfig | None = None
             loaded_model: BenchmarkModule | None = None
             for dataset_config in dataset_configs:
-                # Skip if we have already benchmarked this model on this dataset and
-                # we are not forcing the benchmark
                 if not benchmark_config.force and model_has_been_benchmarked(
                     model_id=model_id,
                     dataset=dataset_config.name,
@@ -424,7 +409,6 @@ class Benchmarker:
                         num_finished_benchmarks += len(dataset_configs)
                         continue
 
-                # Skip if the model is an encoder model and the task is generative
                 task_is_generative = (
                     dataset_config.task.task_group in GENERATIVE_DATASET_TASK_GROUPS
                 )
@@ -436,8 +420,6 @@ class Benchmarker:
                     )
                     continue
 
-                # We do not re-initialise generative models as their architecture is not
-                # customised to specific datasets
                 if model_config.model_type == ModelType.GENERATIVE:
                     initial_logging(
                         model_config=model_config,
@@ -456,10 +438,6 @@ class Benchmarker:
                             if benchmark_config.raise_errors:
                                 raise e
                             logger.info(e.message)
-
-                            # Add the remaining number of benchmarks for the model to
-                            # our benchmark counter, since we're skipping the rest of
-                            # them
                             num_finished_benchmarks += (
                                 len(dataset_configs)
                                 - dataset_configs.index(dataset_config)
@@ -469,7 +447,6 @@ class Benchmarker:
                     else:
                         loaded_model.dataset_config = dataset_config
 
-                # Benchmark a single model on a single dataset
                 benchmark_output_or_err = self._benchmark_single(
                     model=loaded_model,
                     model_config=model_config,
@@ -490,9 +467,6 @@ class Benchmarker:
 
                 elif isinstance(benchmark_output_or_err, InvalidModel):
                     logger.info(benchmark_output_or_err.message)
-
-                    # Add the remaining number of benchmarks for the model to our
-                    # benchmark counter, since we're skipping the rest of them
                     num_finished_benchmarks += (
                         len(dataset_configs) - dataset_configs.index(dataset_config) - 1
                     )
@@ -514,14 +488,6 @@ class Benchmarker:
             if benchmark_config.clear_model_cache:
                 clear_model_cache_fn(cache_dir=benchmark_config.cache_dir)
 
-        # This avoids the following warning at the end of the benchmarking:
-        #   Warning: WARNING: process group has NOT been destroyed before we destruct
-        #   ProcessGroupNCCL. On normal program exit, the application should call
-        #   destroy_process_group to ensure that any pending NCCL operations have
-        #   finished in this process. In rare cases this process can exit before this
-        #   point and block the progress of another member of the process group. This
-        #   constraint has always been present,  but this warning has only been added
-        #   since PyTorch 2.4 (function operator())
         with contextlib.suppress(AssertionError):
             destroy_process_group()
         return current_benchmark_results
@@ -530,16 +496,16 @@ class Benchmarker:
         self,
         progress_bar: bool | None = None,
         save_results: bool | None = None,
-        task: str | list[str] | None | None = None,
-        dataset: str | list[str] | None | None = None,
+        task: str | list[str] | None = None,
+        dataset: str | list[str] | None = None,
         language: str | list[str] | None = None,
-        model_language: str | list[str] | None | None = None,
-        dataset_language: str | list[str] | None | None = None,
-        device: Device | None | None = None,
+        model_language: str | list[str] | None = None,
+        dataset_language: str | list[str] | None = None,
+        device: Device | None = None,
         batch_size: int | None = None,
         raise_errors: bool | None = None,
         cache_dir: str | None = None,
-        api_key: str | None | None = None,
+        api_key: str | None = None,
         force: bool | None = None,
         verbose: bool | None = None,
         trust_remote_code: bool | None = None,
@@ -547,8 +513,8 @@ class Benchmarker:
         evaluate_test_split: bool | None = None,
         few_shot: bool | None = None,
         num_iterations: int | None = None,
-        api_base: str | None | None = None,
-        api_version: str | None | None = None,
+        api_base: str | None = None,
+        api_version: str | None = None,
         debug: bool | None = None,
         run_with_cli: bool | None = None,
         only_allow_safetensors: bool | None = None,
@@ -698,9 +664,6 @@ class Benchmarker:
             The prepared list of model IDs.
         """
         model_ids = [model_id] if isinstance(model_id, str) else model_id
-
-        # Reorder the `model_ids` list to include the ones present in the benchmark
-        # results first
         benchmarked_model_ids = [
             re.sub(r"\(.+\)", "", record.model).strip()
             for record in self.benchmark_results
@@ -709,7 +672,6 @@ class Benchmarker:
         model_ids_sorted += [
             m_id for m_id in model_ids if m_id not in benchmarked_model_ids
         ]
-
         return [m_id.rstrip(" /") for m_id in model_ids_sorted]
 
     def _benchmark_single(
@@ -743,10 +705,7 @@ class Benchmarker:
 
         while True:
             try:
-                # Set random seeds to enforce reproducibility of the randomly
-                # initialised weights
                 rng = enforce_reproducibility()
-
                 if model is None or model_config.model_type != ModelType.GENERATIVE:
                     logger.info("Loading model...")
                     model = load_model(
@@ -760,7 +719,6 @@ class Benchmarker:
                     scores = benchmark_speed(
                         model=model, benchmark_config=benchmark_config
                     )
-
                 else:
                     bootstrapped_datasets = load_data(
                         rng=rng,
@@ -833,20 +791,15 @@ class Benchmarker:
                 continue
 
             except (InvalidBenchmark, InvalidModel) as e:
-                # If the model ID is not valid then raise an error
                 model_err_msg = "does not exist on the Hugging Face Hub"
                 if benchmark_config.raise_errors and model_err_msg in str(e):
                     raise e
-
-                # Otherwise, if the error is due to the MPS fallback not being enabled,
-                # then raise an error asking the user to enable it
                 elif "PYTORCH_ENABLE_MPS_FALLBACK" in str(e):
                     raise RuntimeError(
                         "The benchmark failed because the environment variable "
                         "`PYTORCH_ENABLE_MPS_FALLBACK` is not set. Please set this "
                         "environment variable to `1` and try again."
                     )
-
                 elif benchmark_config.raise_errors:
                     raise e
                 return e
@@ -967,7 +920,7 @@ class Benchmarker:
             "`benchmark` function instead. This will be removed in a future version."
         )
         return self.benchmark(
-            model=models,
+            models=models,
             task=task,
             dataset=dataset,
             progress_bar=progress_bar,
@@ -989,7 +942,6 @@ class Benchmarker:
             num_iterations=num_iterations,
             only_allow_safetensors=only_allow_safetensors,
         )
-
 
 def model_has_been_benchmarked(
     model_id: str,
@@ -1023,7 +975,6 @@ def model_has_been_benchmarked(
             return True
     return False
 
-
 def adjust_logging_level(verbose: bool, ignore_testing: bool = False) -> int:
     """Adjust the logging level based on verbosity.
 
@@ -1045,7 +996,6 @@ def adjust_logging_level(verbose: bool, ignore_testing: bool = False) -> int:
     logger.setLevel(logging_level)
     return logging_level
 
-
 def clear_model_cache_fn(cache_dir: str) -> None:
     """Clear the model cache.
 
@@ -1063,7 +1013,6 @@ def clear_model_cache_fn(cache_dir: str) -> None:
                 if sub_model_dir.is_dir():
                     rmtree(sub_model_dir)
 
-
 def prepare_dataset_configs(dataset_names: list[str]) -> list["DatasetConfig"]:
     """Prepare the dataset configuration(s) to be benchmarked.
 
@@ -1077,7 +1026,6 @@ def prepare_dataset_configs(dataset_names: list[str]) -> list["DatasetConfig"]:
     return [
         cfg for cfg in get_all_dataset_configs().values() if cfg.name in dataset_names
     ]
-
 
 def initial_logging(
     model_config: "ModelConfig",
