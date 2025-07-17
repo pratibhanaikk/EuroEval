@@ -7,8 +7,6 @@ from .dataset_configs import get_all_dataset_configs
 from .enums import Device
 from .languages import get_all_languages
 from .tasks import get_all_tasks
-import re
-import warnings
 
 
 @click.command()
@@ -210,39 +208,6 @@ import warnings
     help="Only allow loading models that have safetensors weights available",
     default=False,
 )
-
-def parse_model_specs(spec: str):
-    """
-    Parses model specifiers like:
-      - model@revision#arg=val
-      - model#arg=val@revision
-      - model@arg=val   (deprecated)
-    """
-    parts = re.split(r'[@#]', spec)
-    spes = re.findall(r'[@#]', spec)
-
-    model = parts[0]
-    revision = None
-    gen_args = {}
-
-    for i, sep in enumerate(spes):
-        val = parts[i + 1]
-        if sep == '@':
-            if '=' in val:
-                warnings.warn(
-                    'Using "@" for generation args is deprecated — please use "#" instead.',
-                    DeprecationWarning
-                )
-                key, value = val.split('=', 1)
-                gen_args[key] = value
-            else:
-                revision = val
-        elif sep == '#':
-            key, value = val.split('=', 1)
-            gen_args[key] = value
-
-    return model, revision, gen_args
-
 def benchmark(
     model: tuple[str],
     dataset: tuple[str],
@@ -271,7 +236,7 @@ def benchmark(
     only_allow_safetensors: bool,
 ) -> None:
     """Benchmark pretrained language models on language tasks."""
-    parsed_model = [parse_model_specs(m) for m in model]
+    models = list(model)
     datasets = None if len(dataset) == 0 else list(dataset)
     languages: list[str] = list(language)
     model_languages = None if len(model_language) == 0 else list(model_language)
@@ -309,7 +274,7 @@ def benchmark(
     )
 
     # Perform the benchmark evaluation
-    benchmarker.benchmark(model=parsed_model)
+    benchmarker.benchmark(model=models)
 
 
 if __name__ == "__main__":
