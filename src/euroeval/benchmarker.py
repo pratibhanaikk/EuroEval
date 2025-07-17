@@ -229,7 +229,7 @@ class Benchmarker:
 
     def benchmark(
         self,
-        models: list[tuple[str, str | None, dict]],
+        model: list[str] | str,
         task: str | list[str] | None = None,
         dataset: list[str] | str | None = None,
         progress_bar: bool | None = None,
@@ -369,19 +369,7 @@ class Benchmarker:
         if benchmark_config.clear_model_cache:
             clear_model_cache_fn(cache_dir=benchmark_config.cache_dir)
 
-        model_ids = []
-        model_revisions = {}
-        model_generation_args = {}
-        
-        for model_id, revision, gen_args in models:
-            model_ids.append(model_id)
-            if revision is not None:
-                model_revisions[model_id] = revision
-            if gen_args:
-                model_generation_args[model_id] = gen_args
-            
-        model_ids = self._prepare_model_ids(model_ids)
-        
+        model_ids = self._prepare_model_ids(model_id=model)
         dataset_configs = prepare_dataset_configs(
             dataset_names=benchmark_config.datasets
         )
@@ -414,10 +402,7 @@ class Benchmarker:
                 if model_config is None:
                     try:
                         model_config = get_model_config(
-                            model_id=model_id,
-                            benchmark_config=benchmark_config,
-                            revision=model_revisions.get(model_id),
-                            generation_args=model_generation_args.get(model_id),
+                            model_id=model_id, benchmark_config=benchmark_config
                         )
                     except InvalidModel as e:
                         logger.info(e.message)
@@ -853,7 +838,7 @@ class Benchmarker:
 
     def __call__(
         self,
-        models: list[tuple[str, str | None, dict]],
+        model: list[str] | str,
         task: str | list[str] | None = None,
         dataset: list[str] | str | None = None,
         progress_bar: bool | None = None,
@@ -967,7 +952,7 @@ class Benchmarker:
             "`benchmark` function instead. This will be removed in a future version."
         )
         return self.benchmark(
-            model=models,
+            model=model,
             task=task,
             dataset=dataset,
             progress_bar=progress_bar,
