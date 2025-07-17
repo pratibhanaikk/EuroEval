@@ -1,14 +1,14 @@
 """Command-line interface for benchmarking."""
 
 import click
+import re
+import warnings
 
 from .benchmarker import Benchmarker
 from .dataset_configs import get_all_dataset_configs
 from .enums import Device
 from .languages import get_all_languages
 from .tasks import get_all_tasks
-import re
-import warnings
 
 
 @click.command()
@@ -189,14 +189,6 @@ import warnings
     "an inference API.",
 )
 @click.option(
-    "--gpu-memory-utilization",
-    default=0.9,
-    show_default=True,
-    help="The GPU memory utilization to use for vLLM. A larger value will result in "
-    "faster evaluation, but at the risk of running out of GPU memory. Only reduce this "
-    "if you are running out of GPU memory. Only relevant if the model is generative.",
-)
-@click.option(
     "--debug/--no-debug",
     default=False,
     show_default=True,
@@ -210,39 +202,6 @@ import warnings
     help="Only allow loading models that have safetensors weights available",
     default=False,
 )
-
-def parse_model_specs(spec: str):
-    """
-    Parses model specifiers like:
-      - model@revision#arg=val
-      - model#arg=val@revision
-      - model@arg=val   (deprecated)
-    """
-    parts = re.split(r'[@#]', spec)
-    spes = re.findall(r'[@#]', spec)
-
-    model = parts[0]
-    revision = None
-    gen_args = {}
-
-    for i, sep in enumerate(spes):
-        val = parts[i + 1]
-        if sep == '@':
-            if '=' in val:
-                warnings.warn(
-                    'Using "@" for generation args is deprecated — please use "#" instead.',
-                    DeprecationWarning
-                )
-                key, value = val.split('=', 1)
-                gen_args[key] = value
-            else:
-                revision = val
-        elif sep == '#':
-            key, value = val.split('=', 1)
-            gen_args[key] = value
-
-    return model, revision, gen_args
-
 def benchmark(
     model: tuple[str],
     dataset: tuple[str],
@@ -266,7 +225,6 @@ def benchmark(
     num_iterations: int,
     api_base: str | None,
     api_version: str | None,
-    gpu_memory_utilization: float,
     debug: bool,
     only_allow_safetensors: bool,
 ) -> None:
@@ -302,7 +260,6 @@ def benchmark(
         num_iterations=num_iterations,
         api_base=api_base,
         api_version=api_version,
-        gpu_memory_utilization=gpu_memory_utilization,
         debug=debug,
         run_with_cli=True,
         only_allow_safetensors=only_allow_safetensors,
@@ -310,6 +267,39 @@ def benchmark(
 
     # Perform the benchmark evaluation
     benchmarker.benchmark(model=parsed_model)
+
+
+def parse_model_specs(spec: str):
+    """
+    Parses model specifiers like:
+      - model@revision#arg=val
+      - model#arg=val@revision
+      - model@arg=val   (deprecated)
+    """
+    parts = re.split(r'[@#]', spec)
+    seps = re.findall(r'[@#]', spec)
+
+    model = parts[0]
+    revision = None
+    gen_args = {}
+
+    for i, sep in enumerate(seps):
+        val = parts[i + 1]
+        if sep == '@':
+            if '=' in val:
+                warnings.warn(
+                    'Using "@" for generation args is deprecated — please use "#" instead.',
+                    DeprecationWarning
+                )
+                key, value = val.split('=', 1)
+                gen_args[key] = value
+            else:
+                revision = val
+        elif sep == '#':
+            key, value = val.split('=', 1)
+            gen_args[key] = value
+
+    return model, revision, gen_args
 
 
 if __name__ == "__main__":
