@@ -72,6 +72,7 @@ from ..utils import (
     create_model_cache_dir,
     log_once,
     safe_run,
+    split_model_id
 )
 from .base import BenchmarkModule
 from .hf import HuggingFaceEncoderModel, load_hf_model_config, load_tokenizer
@@ -1038,7 +1039,7 @@ class LiteLLMModel(BenchmarkModule):
             Whether the model exists, or an error describing why we cannot check
             whether the model exists.
         """
-        model_id, _ = model_id.split("@") if "@" in model_id else (model_id, "main")
+        model_id, delimiter, _ = split_model_id(model_id)
         if model_id in litellm.model_list:
             return True
 
@@ -1126,9 +1127,10 @@ class LiteLLMModel(BenchmarkModule):
         Returns:
             The model configuration.
         """
-        model_id, revision = model_id.split("@") if "@" in model_id else (model_id, "")
+        model_id, delimiter, revision = split_model_id(model_id)
         return ModelConfig(
             model_id=model_id,
+            delimiter=delimiter,
             revision=revision,
             task="text-generation",
             languages=list(),

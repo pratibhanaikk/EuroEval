@@ -536,6 +536,7 @@ class ModelConfig:
     """
 
     model_id: str
+    delimiter: str
     revision: str
     task: str
     languages: list[Language]

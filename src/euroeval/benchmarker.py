@@ -78,6 +78,7 @@ class Benchmarker:
         num_iterations: int = 10,
         api_base: str | None = None,
         api_version: str | None = None,
+        gpu_memory_utilization: float = 0.9,
         debug: bool = False,
         run_with_cli: bool = False,
         only_allow_safetensors: bool = False,
@@ -145,6 +146,11 @@ class Benchmarker:
                 to a model on an inference API. Defaults to None.
             api_version:
                 The version of the API to use. Defaults to None.
+            gpu_memory_utilization:
+                The GPU memory utilization to use for vLLM. Only relevant if the model
+                is generative. A larger value will result in faster evaluation, but at
+                the risk of running out of GPU memory. Only reduce this if you are
+                running out of GPU memory. Defaults to 0.9.
             debug:
                 Whether to output debug information. Defaults to False.
             run_with_cli:
@@ -192,6 +198,7 @@ class Benchmarker:
             num_iterations=num_iterations,
             api_base=api_base,
             api_version=api_version,
+            gpu_memory_utilization=gpu_memory_utilization,
             debug=debug,
             run_with_cli=run_with_cli,
             only_allow_safetensors=only_allow_safetensors,
@@ -222,7 +229,7 @@ class Benchmarker:
 
     def benchmark(
         self,
-        models: list[tuple[str, str | None, dict]],
+        model: list[str] | str,
         task: str | list[str] | None = None,
         dataset: list[str] | str | None = None,
         progress_bar: bool | None = None,
@@ -362,19 +369,7 @@ class Benchmarker:
         if benchmark_config.clear_model_cache:
             clear_model_cache_fn(cache_dir=benchmark_config.cache_dir)
 
-        model_ids = []
-        model_revisions = {}
-        model_generation_args = {}
-        
-        for model_id, revision, gen_args in models:
-            model_ids.append(model_id)
-            if revision is not None:
-                model_revisions[model_id] = revision
-            if gen_args:
-                model_generation_args[model_id] = gen_args
-            
-        model_ids = self._prepare_model_ids(model_ids)
-        
+        model_ids = self._prepare_model_ids(model_id=model)
         dataset_configs = prepare_dataset_configs(
             dataset_names=benchmark_config.datasets
         )
@@ -407,10 +402,7 @@ class Benchmarker:
                 if model_config is None:
                     try:
                         model_config = get_model_config(
-                            model_id=model_id,
-                            benchmark_config=benchmark_config,
-                            revision=model_revisions.get(model_id),
-                            generation_args=model_generation_args.get(model_id),
+                            model_id=model_id, benchmark_config=benchmark_config
                         )
                     except InvalidModel as e:
                         logger.info(e.message)
@@ -846,7 +838,7 @@ class Benchmarker:
 
     def __call__(
         self,
-        models: list[tuple[str, str | None, dict]],
+        model: list[str] | str,
         task: str | list[str] | None = None,
         dataset: list[str] | str | None = None,
         progress_bar: bool | None = None,
@@ -960,7 +952,7 @@ class Benchmarker:
             "`benchmark` function instead. This will be removed in a future version."
         )
         return self.benchmark(
-            model=models,
+            model=model,
             task=task,
             dataset=dataset,
             progress_bar=progress_bar,

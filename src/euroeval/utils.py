@@ -14,10 +14,12 @@ import warnings
 from functools import cache
 from pathlib import Path
 
+
 import litellm
 import numpy as np
 import requests
 import torch
+import re
 from datasets.utils import disable_progress_bar
 from requests.exceptions import RequestException
 from transformers import logging as tf_logging
@@ -373,3 +375,15 @@ async def add_semaphore_and_catch_exception(
             return await coroutine
         except Exception as exc:
             return exc
+        
+def split_model_id(model_id: str, default_revision: str = "main") -> tuple[str, str, str]:
+    """
+    Splits the model_id into (model_name, revision) based on '@' and '#' delimiter.
+    If neither delimiters are present, returns (model_name, default_revision = 'main')
+    """
+    parts = re.split(r'([@#])', model_id, maxsplit=1)
+    if len(parts) == 3:
+        return parts[0], parts[1], parts[2]
+    else:
+        return model_id, '', default_revision
+
