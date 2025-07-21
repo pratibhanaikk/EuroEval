@@ -515,7 +515,9 @@ class ModelConfig:
         model_id:
             The ID of the model.
         revision:
-            The revision of the model.
+            The revision of the model(extracted from '@')
+        parameter:
+            The parameter of the model(extracted from '#')
         task:
             The task that the model was trained on.
         languages:
@@ -536,8 +538,8 @@ class ModelConfig:
     """
 
     model_id: str
-    delimiter: str
     revision: str
+    parameter: str 
     task: str
     languages: list[Language]
     inference_backend: InferenceBackend

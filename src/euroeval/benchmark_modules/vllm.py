@@ -544,9 +544,9 @@ class VLLMModel(HuggingFaceEncoderModel):
         if using_api:
             return False
 
-        model_id, delimiter, revision = split_model_id(model_id)
+        model_id, revision, parameter = split_model_id(model_id)
         model_info = get_model_repo_info(
-            model_id=model_id, delimiter=delimiter, revision=revision, benchmark_config=benchmark_config
+            model_id=model_id, revision=revision,parameter=parameter, benchmark_config=benchmark_config
         )
         return (
             model_info is not None
@@ -568,9 +568,9 @@ class VLLMModel(HuggingFaceEncoderModel):
         Returns:
             The model configuration.
         """
-        model_id, delimiter, revision = split_model_id(model_id)
+        model_id, revision, parameter = split_model_id(model_id)
         model_info = get_model_repo_info(
-            model_id=model_id, delimiter=delimiter, revision=revision, benchmark_config=benchmark_config
+            model_id=model_id, revision=revision, parameter=parameter, benchmark_config=benchmark_config
         )
         if model_info is None:
             raise InvalidModel(f"The model {model_id!r} could not be found.")
@@ -580,8 +580,8 @@ class VLLMModel(HuggingFaceEncoderModel):
 
         model_config = ModelConfig(
             model_id=model_id,
-            delimiter=delimiter,
             revision=revision,
+            parameter=parameter,
             task=model_info.pipeline_tag,
             languages=[
                 language_mapping[tag]

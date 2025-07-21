@@ -19,7 +19,6 @@ import litellm
 import numpy as np
 import requests
 import torch
-import re
 from datasets.utils import disable_progress_bar
 from requests.exceptions import RequestException
 from transformers import logging as tf_logging
@@ -376,14 +375,29 @@ async def add_semaphore_and_catch_exception(
         except Exception as exc:
             return exc
         
-def split_model_id(model_id: str, default_revision: str = "main") -> tuple[str, str, str]:
+def split_model_id(model_id: str) -> tuple[str, str, str]:
+    """Split a model ID into base ID, revision, and parameter.
+    
+    Args:
+        model_id:
+            The model ID, which may contain a revision (after @) or parameter 
+            (after #), but never both.
+            
+    Returns:
+        A tuple of (base_model_id, revision, parameter). Only one of revision or
+        parameter will be non-empty.
     """
-    Splits the model_id into (model_name, revision) based on '@' and '#' delimiter.
-    If neither delimiters are present, returns (model_name, default_revision = 'main')
-    """
-    parts = re.split(r'([@#])', model_id, maxsplit=1)
-    if len(parts) == 3:
-        return parts[0], parts[1], parts[2]
+    if '@' in model_id:
+        base_model_id, revision = model_id.split('@', 1)
+        parameter = ""
+    elif '#' in model_id:
+        base_model_id, parameter = model_id.split('#', 1)
+        revision = ""
     else:
-        return model_id, '', default_revision
+        base_model_id = model_id
+        revision = ""
+        parameter = ""
+ 
+    return base_model_id, revision, parameter
+
 
